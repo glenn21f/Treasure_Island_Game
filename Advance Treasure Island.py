@@ -1,7 +1,7 @@
 # Treasure Island — Combat Edition
 # Adds HP/hearts, simple combat, items, random events, and checkpoint snapshots.
 
-import sys, random, argparse, json, os, shutil
+import sys, random, argparse, json, os, shutil, copy
 from dataclasses import dataclass, field, asdict, replace
 from textwrap import fill
 from typing import Optional, Callable
@@ -65,12 +65,12 @@ class GameState:
 
     def save_checkpoint(self, fn):
         self.checkpoint_fn = fn
-        self.snapshot = replace(self)
+        self.snapshot = copy.deepcopy(self)
         save_to_disk()
 
     def restore_checkpoint(self):
         if self.snapshot:
-            restored = replace(self.snapshot)
+            restored = copy.deepcopy(self.snapshot)
             self.__dict__.update(restored.__dict__)
 
 
@@ -123,8 +123,10 @@ def game_over(msg="Game Over."):
 
 
 def save_to_disk(filename="save.json"):
-    data = asdict(replace(state))
+    data = asdict(state)
     data["inventory"] = list(data["inventory"])
+    data.pop("checkpoint_fn", None)
+    data.pop("snapshot", None)
     with open(filename, "w") as f:
         json.dump({"state": data, "checkpoint": state.checkpoint_fn.__name__ if state.checkpoint_fn else "intro"}, f)
 
@@ -142,7 +144,7 @@ def load_from_disk(filename="save.json"):
     state.gold = st["gold"]
     state.weapon = st["weapon"]
     state.checkpoint_fn = globals().get(data["checkpoint"], intro)
-    state.snapshot = replace(state)
+    state.snapshot = copy.deepcopy(state)
     return state.checkpoint_fn
 
 # ------------- RANDOM EVENTS -------------
